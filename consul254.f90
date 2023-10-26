@@ -40,6 +40,10 @@ contains
     character :: dummy
     character(128) :: errmsg
 
+    write (stdout, iostat=stat, iomsg=errmsg) "Consul-254 TTY EMU. Copyright (c) 2023 Stanislav Maslovski", CR, LF, CR, LF
+    flush (stdout)
+    if (stat /= 0) goto 10
+
     stat = 0
 l1: do while (stat == 0)
       read (iunit, data_rd_fmt, iostat=stat, iomsg=errmsg) ba(0:2), dummy, ba(3:6)
@@ -48,7 +52,7 @@ l1: do while (stat == 0)
       flush (stdout)
     enddo l1
 
-  write (0,*) "Printer: " // trim(errmsg)
+10  write (0,*) "Printer: " // trim(errmsg)
 
   end subroutine
 
@@ -150,7 +154,7 @@ l1: do while (stat == 0)
       parser_state = FIRST_CHAR
     enddo l1
 
-  write (0,*) "Keyboard: " // trim(errmsg)
+    write (0,*) "Keyboard: " // trim(errmsg)
 
   end subroutine
 

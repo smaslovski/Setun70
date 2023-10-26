@@ -289,7 +289,6 @@ MACRO&
 ! end MACRO
 
 BASIC&
-
     if (c1 /= 1 .and. pa == -13) then
       w = -31
       goto IR
@@ -736,6 +735,7 @@ program Setun_70_emulator
 
   do while (.true.)
     call Setun_70
+    write (*,"(/,a)") "Setun-70 CPU & periphery EMU. Copyright (c) 2023 Stanislav Maslovski"
     write (*,"(5(/,a),$)") "Options:", "  (0) Restart", "  (1) Run", "  (2) Step", "Your choice? (0-2) "
 10  read (*,"(a1,$)") choice
     select case (choice)
