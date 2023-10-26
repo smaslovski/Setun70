@@ -1,5 +1,7 @@
 # Setun70
-Emulator of the Soviet ternary computer "Setun-70" (Сетунь-70). The emulator follows the logical description of Setun-70 computer as published in "Брусенцов, Е.П., Жоголев, Е.А., Алгоритмическое описание структуры и системы команд вычислительной машины Сетунь 70, Научный отчет ВЦ МГУ № 27-ВТ (417), Москва, Ротапринт ВЦ МГУ, 1970."
+Emulator of the Soviet ternary computer "Setun-70" (Сетунь-70).
+
+The emulator follows the logical description of Setun-70 computer as published in "Брусенцов, Е.П., Жоголев, Е.А., Алгоритмическое описание структуры и системы команд вычислительной машины Сетунь 70, Научный отчет ВЦ МГУ № 27-ВТ (417), Москва, Ротапринт ВЦ МГУ, 1970.". The algorithm described in this report can be found in the file Setun70.alg (OCRed from the report and edited).
 
 Startup ROM code with some IO and interrupt support is in the file ROM.ods. This file uses macros, and serves as a translator of Setun 70 assembler instructions. The first page of ROM.ods explains how to use it (in Russian). 
 
