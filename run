@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Именованные очереди для обмена данных между процессами
+DEV_TTY_I="/tmp/dev_tty_i"
+DEV_TTY_O="/tmp/dev_tty_o"
+CONSOLE_O="/tmp/console_o"
+[ ! -e "$DEV_TTY_I" ] && mkfifo "$DEV_TTY_I"
+[ ! -e "$DEV_TTY_O" ] && mkfifo "$DEV_TTY_O"
+[ ! -e "$CONSOLE_O" ] && mkfifo "$CONSOLE_O"
+
+# Файл регистра ключей консоли (ввод)
+REGFILE="/tmp/register"
+touch "$REGFILE"
+
+# Файл для устройства ввода с перфоленты
+TAPFILE="/tmp/tape_reader"
+touch "$TAPFILE"
+
+# Файл для устройства вывода на перфоленту
+PUNFILE="/tmp/tape_punch"
+
+# Лог ввода с консоли (в формате перфоленты)
+CONSOLE_LOG="/tmp/console.log"
+
+# Тот же самый лог, но через очередь
+CONSOLE_LOG_FIFO="/tmp/console_log"
+[ ! -e "$CONSOLE_LOG_FIFO" ] && mkfifo "$CONSOLE_LOG_FIFO"
+
+# Конфигурация устройств ввода/вывода:
+# формат: "<grp>,<dev>,<rd>,<wr>,'<path>'"
+REGISTER="-1,-1,T,F,\'$REGFILE\'"
+TAPE_I="0,-1,T,F,\'$TAPFILE\'"
+TAPE_O="0,1,F,T,\'$PUNFILE\'"
+CONSUL_I="1,3,T,F,\'$DEV_TTY_I\'"
+CONSUL_O="1,3,F,T,\'$DEV_TTY_O\'"
+
+# Стартуем эмулятор
+CMD="stty -icanon -echo noflsh susp 'S' intr 'A' && ./setun70 $REGISTER $TAPE_I $TAPE_O $CONSUL_I $CONSUL_O"
+xterm -title "Setun-70" -geometry "72x40" -class Setun70 -fa "DejaVu Sans Mono" -fs 12 -e "$CMD" &
+PID1=$!
+
+sleep 0.2
+
+# Стартуем терминалку «Консул 254» с подключением к CON_FIFOs
+CMD="stty -icanon -echo && (tee $CONSOLE_LOG $CONSOLE_LOG_FIFO <$CONSOLE_O >$DEV_TTY_I& ./consul254 $DEV_TTY_O $CONSOLE_O)"
+xterm -title "Consul-254" -geometry "72x40" -class Setun70 -fa "DejaVu Sans Mono" -fs 12 -e "$CMD" &
+PID2=$!
+
+sleep 0.2
+
+# Стартуем просмотр ввода с консоли (в формате перфоленты)
+CMD="stty -echo && tail -F $CONSOLE_LOG"
+xterm -title "Keyboard data (punched)" -geometry "72x10" -class Setun70 -fa "DejaVu Sans Mono" -fs 12 -e "$CMD" &
+PID3=$1
+
+sleep 0.2
+
+# Стартуем просмотр ввода с консоли (в символьном виде)
+CMD="stty -icanon -echo && ./consul254 $CONSOLE_LOG_FIFO /dev/null"
+xterm -title "Keyboard data (as is)" -geometry "72x10" -class Setun70 -fa "DejaVu Sans Mono" -fs 12 -e "$CMD" &
+PID4=$1
+
+# Ждем завершения любого из первых двух процессов xterm
+wait -n $PID1 $PID2
+
+# Прибиваем процессы и выходим
+kill $PID1 $PID2 $PID3 $PID4 >/dev/null 2>&1
