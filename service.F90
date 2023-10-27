@@ -21,6 +21,7 @@ subroutine INIT_EMU
 
   integer, parameter :: max_arg_num = 27, max_arg_len = 128
   character(len=max_arg_len) :: cmd_arg, filename, msg
+  character(len=:), allocatable :: rom_file
   integer :: i, j, gnum, unum, argc, stat, dfu
   logical :: rd_flg, wr_flg
 
@@ -38,11 +39,23 @@ subroutine INIT_EMU
   ! Консул
   io_unit(1,3) = IO_Dev(.false.,IO_Port(.true.,"consul_tty_i"),IO_Port(.true.,"consul_tty_o"))
 
-  ! Подключаем устройства из командной строки
+  ! Разбираем аргументы командной строки
 
   argc = command_argument_count()
+
+  ! Первый аргумент - имя файла образа ПЗУ
+
   if (argc > 0) then
-    do i = 1, min(argc, max_arg_num)
+    call get_command_argument(1, cmd_arg)
+    rom_file = trim(cmd_arg)
+  else
+    rom_file = "ROM.csv"
+  endif
+
+  ! Подключаем устройства из командной строки
+
+  if (argc > 1) then
+    do i = 2, min(argc, max_arg_num)
       call get_command_argument(i, cmd_arg)
       read (cmd_arg, *, err = 10) gnum, unum, rd_flg, wr_flg, filename
       if (gnum >= -1 .and. gnum <= 1 .and. unum >= -4 .and. unum <= 4) then
@@ -93,7 +106,7 @@ subroutine INIT_EMU
 
   ! Инициализируем содержимое ПЗУ из образа в файле
 
-  open(newunit = dfu, file = "ROM.csv", action = "read", iostat = stat, iomsg = msg)
+  open(newunit = dfu, file = rom_file, action = "read", iostat = stat, iomsg = msg)
   if (stat /= 0) then
     write (0,100) trim(msg)
     read (*,*)
