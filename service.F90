@@ -19,7 +19,7 @@ subroutine INIT_EMU
   ! Процедура INIT_EMU инициализирует структуры данных
   ! для эмуляции внешней аппаратуры ЭВМ Сетунь-70.
 
-  integer, parameter :: max_arg_num = 27, max_arg_len = 128
+  integer, parameter :: max_arg_num = 25, max_arg_len = 128
   character(len=max_arg_len) :: cmd_arg, filename, msg
   character(len=:), allocatable :: rom_file
   integer :: i, j, gnum, unum, argc, stat, dfu
