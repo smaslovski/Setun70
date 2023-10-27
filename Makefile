@@ -25,7 +25,10 @@ clean:
 
 .NOTINTERMEDIATE: ternary_arith.o io_module.o disasm.o
 
-setun70.mod, disasm.mod: ternary_arith.mod io_module.mod
+setun70.mod disasm.mod: ternary_arith.mod io_module.mod
+
+.INTERMEDIATE: setun70.o
+setun70.o: ternary_arith.mod io_module.mod
 
 service.o: disasm.mod io_module.mod setun70.mod
 
