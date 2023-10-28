@@ -30,6 +30,8 @@ module Consul254
 
   type(CharSeq) :: symbol(0:127) ! таблица печатных символов
   integer :: code(0:255) ! таблица перекодировки
+  logical :: inv_input  = .false. ! флаг инвертирования входных данных (печать)
+  logical :: inv_output = .false. ! флаг инвертирования выходных данных (клавиатура)
 
 contains
 
@@ -48,6 +50,7 @@ contains
 l1: do while (stat == 0)
       read (iunit, data_rd_fmt, iostat=stat, iomsg=errmsg) ba(0:2), dummy, ba(3:6)
       if (stat /= 0) exit l1
+      if (inv_input) ba = inv(ba)
       write (stdout, iostat=stat, iomsg=errmsg) symbol(ba2i(ba))%seq
       flush (stdout)
     enddo l1
@@ -59,7 +62,7 @@ l1: do while (stat == 0)
   subroutine Consul_254_keyboard(stdin, ounit)
 
     integer, intent(in) :: stdin, ounit
-    integer :: i, c_cnt, stat, parser_state
+    integer :: i, c_cnt, stat, parser_state, ba(0:6)
     integer, parameter :: FIRST_CHAR=0, ESCAPE=1, LESS_EQ=2, NOT_EQ=3, GREAT_EQ=4, POW_10=5
     type(CharSeq) :: out_seq
     character(128) :: errmsg
@@ -83,7 +86,7 @@ l1: do while (stat == 0)
               cycle l1
             elseif (code(i) == 128) then
               cycle l1
-            end if
+            endif
           elseif (i < 224) then ! двухбайтовый
             c_cnt = 2
           elseif (i < 240) then ! трехбайтовый
@@ -149,7 +152,9 @@ l1: do while (stat == 0)
             parser_state = FIRST_CHAR; cycle l1
           endif
       end select
-      write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) i2ba(code(hash(out_seq%seq)))
+      ba = i2ba(code(hash(out_seq%seq)))
+      if (inv_output) ba = inv(ba)
+      write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) ba
       flush (ounit)
       parser_state = FIRST_CHAR
     enddo l1
@@ -251,12 +256,19 @@ l1: do while (stat == 0)
     if (l /= 1) h = h + 128
   end function
 
+  function inv(ba) result (res)
+    integer, intent(in) :: ba(0:6)
+    integer :: res(0:6)
+    res = 0
+    where (ba == 0) res = 1
+  end function
+
   function ba2i(ba) result (n)
     integer, intent(in) :: ba(0:6)
     integer :: i, n
     n = 0
     do i = 0, 6
-      if (ba(i) == 1) n = ibset(n,i)
+      if (ba(i) /= 0) n = ibset(n,i)
     enddo
   end function
 
@@ -292,14 +304,23 @@ program Consul_254
 
   implicit none
 
-  integer :: stat, iunit, ounit, stdin, stdout
-  character(64) :: input_fifo, output_fifo
+  integer, parameter :: max_arg_len = 128
+  character(max_arg_len) :: input_fifo, output_fifo, conf_flags
+  integer :: stat, iunit, ounit, stdin, stdout, argc
 
   ! Разбор командной строки
 
-  if (command_argument_count() /= 2) stop "Usage: consul254 <input_fifo> <output_fifo>"
+  argc = command_argument_count()
+
+  if ( argc < 2) stop "Usage: consul254 <input_fifo> <output_fifo> [<conf_flags>]"
   call get_command_argument(1, input_fifo)
   call get_command_argument(2, output_fifo)
+
+  if (argc >= 3) then
+    call get_command_argument(3, conf_flags)
+    read (conf_flags, *, iostat=stat) inv_input, inv_output
+    if (stat /= 0) write (0,*) "Warning: unrecognizable conf_flags argument"
+  endif
 
   ! Бесформатный потоковый режим ввода/вывода на stdin/stdout (поддерживается на линукс и андроид)
 
