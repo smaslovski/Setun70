@@ -30,8 +30,9 @@ module Consul254
 
   type(CharSeq) :: symbol(0:127) ! таблица печатных символов
   integer :: code(0:255) ! таблица перекодировки
-  logical :: inv_input  = .false. ! флаг инвертирования входных данных (печать)
-  logical :: inv_output = .false. ! флаг инвертирования выходных данных (клавиатура)
+  logical :: inv_input   = .false. ! флаг инвертирования входных данных (печать)
+  logical :: inv_output  = .false. ! флаг инвертирования выходных данных (клавиатура)
+  logical :: interactive = .true.  ! флаг интерактивной сессии
 
 contains
 
@@ -41,10 +42,6 @@ contains
     integer :: stat, ba(0:6)
     character :: dummy
     character(128) :: errmsg
-
-    write (stdout, iostat=stat, iomsg=errmsg) "Consul-254 TTY EMU. Copyright (c) 2023 Stanislav Maslovski", CR, LF, CR, LF
-    flush (stdout)
-    if (stat /= 0) goto 10
 
     stat = 0
 l1: do while (stat == 0)
@@ -318,9 +315,11 @@ program Consul_254
 
   if (argc >= 3) then
     call get_command_argument(3, conf_flags)
-    read (conf_flags, *, iostat=stat) inv_input, inv_output
-    if (stat /= 0) write (0,*) "Warning: unrecognizable conf_flags argument"
+    read (conf_flags, *, iostat=stat) inv_input, inv_output, interactive
+    if (stat /= 0) write (0,*) "Warning: unrecognizable/incomplete conf_flags argument"
   endif
+
+  if (interactive) write (*,"(a,/)") "Consul-254 TTY EMU. Copyright (c) 2023 Stanislav Maslovski"
 
   ! Бесформатный потоковый режим ввода/вывода на stdin/stdout (поддерживается на линукс и андроид)
 

@@ -53,7 +53,7 @@ PID1=$!
 sleep 0.2
 
 # Стартуем терминалку «Консул 254» с подключением к CON_FIFOs
-CMD="stty -icanon -echo && (tee $CONSOLE_LOG $CONSOLE_LOG_FIFO <$CONSOLE_O >$DEV_TTY_I& $DIR/consul254 $DEV_TTY_O $CONSOLE_O T,T)"
+CMD="stty -icanon -echo && (tee $CONSOLE_LOG $CONSOLE_LOG_FIFO <$CONSOLE_O >$DEV_TTY_I& $DIR/consul254 $DEV_TTY_O $CONSOLE_O T,T,T)"
 xterm -title "Consul-254" -geometry "72x40" -class Setun70 -fa "DejaVu Sans Mono" -fs 12 -e "$CMD" &
 PID2=$!
 
@@ -67,7 +67,7 @@ PID3=$!
 sleep 0.2
 
 # Стартуем просмотр ввода с консоли (в символьном виде)
-CMD="stty -icanon -echo && $DIR/consul254 $CONSOLE_LOG_FIFO /dev/null T,T"
+CMD="stty -icanon -echo && $DIR/consul254 $CONSOLE_LOG_FIFO /dev/null T,T,F"
 xterm -title "Keyboard data (as is)" -geometry "72x10" -class Setun70 -fa "DejaVu Sans Mono" -fs 12 -e "$CMD" &
 PID4=$!
 
