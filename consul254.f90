@@ -26,12 +26,14 @@ module Consul254
   character, parameter :: TAB = achar(9), LF = achar(10), CR = achar(13), SO = achar(14), SI = achar(15), ESC = achar(27)
 
   character(*), parameter :: data_rd_fmt = "(3i1,1a1,4i1)"
-  character(*), parameter :: data_wr_fmt = "(3i1,'.',4i1)"
+  character(*), parameter :: data_wr_fmt = "(3i1,':',5i1)"
 
   type(CharSeq) :: symbol(0:127) ! таблица печатных символов
   integer :: code(0:255) ! таблица перекодировки
+
   logical :: inv_input   = .false. ! флаг инвертирования входных данных (печать)
   logical :: inv_output  = .false. ! флаг инвертирования выходных данных (клавиатура)
+  logical :: parity_bit  = .false. ! флаг вывода бита четности
   logical :: interactive = .true.  ! флаг интерактивной сессии
 
 contains
@@ -52,7 +54,7 @@ l1: do while (stat == 0)
       flush (stdout)
     enddo l1
 
-10  write (0,*) "Printer: " // trim(errmsg)
+    write (0,*) "Printer: " // trim(errmsg)
 
   end subroutine
 
@@ -151,7 +153,11 @@ l1: do while (stat == 0)
       end select
       ba = i2ba(code(hash(out_seq%seq)))
       if (inv_output) ba = inv(ba)
-      write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) ba
+      if (parity_bit) then
+        write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) ba, modulo(sum(ba)+1, 2)
+      else
+        write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) ba
+      endif
       flush (ounit)
       parser_state = FIRST_CHAR
     enddo l1
