@@ -26,7 +26,7 @@ module Consul254
   character, parameter :: TAB = achar(9), LF = achar(10), CR = achar(13), SO = achar(14), SI = achar(15), ESC = achar(27)
 
   character(*), parameter :: data_rd_fmt = "(3i1,1a1,4i1)"
-  character(*), parameter :: data_wr_fmt = "(3i1,'.',4i1)"
+  character(*), parameter :: data_wr_fmt = "(3i1,'.',5i1)"
 
   type(CharSeq) :: symbol(0:127) ! таблица печатных символов
   integer :: code(0:255) ! таблица перекодировки
@@ -151,7 +151,7 @@ l1: do while (stat == 0)
       end select
       ba = i2ba(code(hash(out_seq%seq)))
       if (inv_output) ba = inv(ba)
-      write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) ba
+      write (ounit, data_wr_fmt, iostat=stat, iomsg=errmsg) ba, modulo(sum(ba)+1, 2)
       flush (ounit)
       parser_state = FIRST_CHAR
     enddo l1
