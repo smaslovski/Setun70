@@ -1,9 +1,16 @@
+comment Алгоритмическое описание функционирования троичной ЭВМ "Сетунь-70"
+  с учетом изменений внесенных после 1975 г. и описанных в данной статье:
+  Брусенцов, Н.П., Рамиль Альварес, Х. Троичная ЭВМ "Сетунь 70". Труды SORUCOM-2011.
+  Развитие вычислительной техники и ее программного обеспечения в России и странах
+  бывшего СССР. Великий Новгород, 2011. C. 71-75;
+
 begin
   ternary array f[-1:1, -3280:3280, -40:40, 1:6],
                 m[-13:13, -40:40, 1:6], q[-1:1, 1:8],
                 g[-1:1, 1:7], u[-1:1, 1:4], h[-1:1, 1:3],
-                c[1:32], R[1:18], Y[1:18], p[1:10], v[1:9],
+                c[1:8], R[1:18], Y[1:18], p[1:10], v[1:9],
                 e[1:6], k[1:6], w[1:4], hf[1:3], a[-1:1],
+                sr[-13:13, 1:12], psr[1:3],
                 start[1:1];
 
 procedure INOUT(i);
@@ -80,7 +87,7 @@ procedure ATTENT;
     при нажатии специальной кнопки на пульте управления машины.
     Как и процедура INOUT, работает параллельно с процедурой SETUN_70;
 
-procedure SETUN_70(T, S, t, k1, k2, k3, ka, ko, c1, ch, ca, ph, pa);
+procedure SETUN_70(T, S, t, k1, k2, k3, ka, ko, c1, ch, ca, ph, pa, TSR);
   comment Формальные параметры используются для введения
     сокращённых обозначений наиболее употребительных частей
     описанных выше массивов;
@@ -104,12 +111,25 @@ begin ternary array x[1:36], z[1:18];
     INCRC
   end REFSYL;
 
+  procedure SUBR(adr, ret);
+    comment Процедура SUBR осуществляет переход на подпрограмму,
+      адрес которой хранится в ячейке m[ch,adr], с запоминанием
+      адреса возврата ret в стеке возвратов;
+  begin
+    if ret > 40 then begin w := -29; goto IR end;
+    x := m[ch, adr];
+    z := 0; z[3] := c1; z[5:6] := ch; z[9:12] := ret;
+    psr := psr+1; TSR := z;
+    ch := h[0] := x[1:2]; ca := x[3:6];
+  end SUBR;
+
 START:
   if start = 0 then
   begin
     start := 1;
-    c1 := 1; ch := 12; ca := -40;
+    c1 := 1; ch := h[0] := 12; ca := -40;
     ph := 0; pa := 0; Y := 0;
+    psr := 0;
     INOUT(-1); INOUT(0); INOUT(+1);
     WATCH; ATTENT; STOP;
 
@@ -136,7 +156,7 @@ MACRO:
     if pa = 13 then begin w := -30; goto IR end;
     pa := pa+1;
     с[21:32] := с[9:20]; c[9:20] := 0; c[17:20] := c[5:8];
-    с[11:14] := с[1:4]; c1 := 0; ch := ca := -13;
+    с[11:14] := с[1:4]; c1 := 0; ch := h[0] := ca := -13;
     T := 0; t := m[ch, ka];
     goto CYCLE
   end MACRO;
@@ -151,12 +171,11 @@ BASIC:
     goto Basop[ko+14];
 
 B1: x[1:18] := S; x[19:36] := Y; x := x*(3^t);
-      S:= x[1:18]; Y:= x[19:36]; pa := pa-1; INCRC;
+      S:= x[1:18]; Y:= x[19:36]; INCRC; pa := pa-1;
       goto CYCLE; comment Name: "LST";
 
-B2: if abs(S) >= (3^17)/2 then
-      begin ca := t; pa := pa-1 end
-      else begin pa := pa-1; INCRC end;
+B2: х[1:18] := T;
+      if x[1] != 0 then ca := t else INCRC; pa := pa-1;
       goto CYCLE; comment Name: "COT";
 
 B3: x[1:18] := T; x[19:36] := Y;
@@ -169,40 +188,40 @@ B3: x[1:18] := T; x[19:36] := Y;
  EX:  e := e+i; T := x[1:18]; Y := x[19:36]; INCRC;
       goto CYCLE; comment Name: "XNN";
 
-B4: e := e-1; INCRC;
-      goto CYCLE; comment Name: "E-1";
+B4: if T != 0 then SUBR(ca+1, ca) else begin INCRC; INCRC end;
+      goto CYCLE; comment Name: "DOW";
 
-B5: e := 0; INCRC;
-      goto CYCLE; comment Name: "E=0";
+B5: INCRC;
+      if T < 0 then z := ca else if T = 0 then z := ca+1 else z := ca+2;
+      SUBR(z, ca+3); pa := pa-1;
+      goto CYCLE; comment Name: "BRT";
 
-B6: e := e+1; INCRC;
-      goto CYCLE; comment Name: "E+1";
+B6: z := T; pa := pa-1;
+      c[1:4] := z[3:6]; h[0] := ch; c[5:8] := z[9:12];
+      goto CYCLE; comment Name: "JMP";
 
 B7: T := T - e*(3^12); INCRC;
       goto CYCLE; comment Name: "T-E";
 
-B8: e := t; pa := pa-1; INCRC;
+B8: e := t; INCRC; pa := pa-1;
       goto CYCLE; comment Name: "E=T";
 
 B9: T := T + e*(3^12); INCRC;
       goto CYCLE; comment Name: "T+E";
 
-B10: if S < 0 then begin ca := t; pa := pa-1 end
-       else begin pa := pa-1; INCRC end;
+B10: if S < 0 then ca := t else INCRC; pa := pa-1;
        goto CYCLE;  comment Name: "CLT";
 
-B11: if S = 0 then begin ca := t; pa := pa-1 end
-       else begin pa := pa-1; INCRC end;
+B11: if S = 0 then ca := t else INCRC; pa := pa-1;
        goto CYCLE;  comment Name: "CET";
 
-B12: if S > 0 then begin ca := t; pa := pa-1 end
-       else begin pa := pa-1; INCRC end;
+B12: if S > 0 then ca := t else INCRC; pa := pa-1;
        goto CYCLE;  comment Name: "CGT";
 
-B13: T := 0; t := ca; INCRC;
-       goto CYCLE; comment Name: "T=C";
+B13: INCRC; SUBR(ca, ca+1);
+       goto CYCLE; comment Name: "JSR";
 
-B14: R := T; pa := pa-1; INCRC;
+B14: R := T; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "R=T";
 
 B15: ca := t;  pa := pa-1;
@@ -211,7 +230,7 @@ B15: ca := t;  pa := pa-1;
 B16: k := t; REFSYL;
        goto CYCLE; comment Name: "T=W";
 
-B17: Y := 0; pa := pa-1; INCRC;
+B17: Y := 0; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "YFT";
 
 B18: k := t;
@@ -219,16 +238,16 @@ B18: k := t;
          begin w := -29; goto IR end;
        if abs(h[k2]) <= 4 then
          m[h[k2], ka:ka+k1+1] := m[ph, 3*(pa-1)-1:3*(pa-1)+k1];
-       pa := pa-1; INCRC;
+       INCRC; pa := pa-1;
        goto CYCLE; comment Name: "W=S";
 
 B19: x[1:18] := T; z := S;
        for i := 1 step 1 until 18 do
          z[i] := z[i]*x[i];
-       S := z; pa := pa-1; INCRC;
+       S := z; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "SMT";
 
-B20: Y := T; pa := pa-1; INCRC;
+B20: Y := T; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "Y=T";
 
 B21: x[1:18] := T; z := S;
@@ -237,28 +256,28 @@ B21: x[1:18] := T; z := S;
            if z[i] = 0 then z[i] := x[i]
            else if z[i] != x[i] & x[i] != 0 then z[i] := 0
          end FOR;
-       S := z; pa := pa-1; INCRC;
+       S := z; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "SAT";
 
-B22: S := S - T; pa := pa-1; INCRC;
+B22: S := S - T; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "S-T";
 
 B23: T := -T; INCRC;
        goto CYCLE; comment Name: "TDN";
 
-B24: S := S + T; pa := pa-1; INCRC;
+B24: S := S + T; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "S+T";
 
 B25: x[1:18] := S; x[19:36] := 0; x := x + T*R*(3^2);
-       S := x[1:18]; Y := x[19:36]; pa := pa-1; INCRC;
+       S := x[1:18]; Y := x[19:36]; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "LBT";
 
 B26: R := S; x := T*R*(3^2); S := x[1:18]; Y := x[19:36];
-       pa := pa-1; INCRC;
+       INCRC; pa := pa-1;
        goto CYCLE; comment Name: "L*T";
 
 B27: x[1:18] := S; x[19:36] := Y; x := x + T*R*(3^2);
-       S := x[1:18]; Y:= x[19:36]; pa := pa-1; INCRC;
+       S := x[1:18]; Y:= x[19:36]; INCRC; pa := pa-1;
        goto CYCLE; comment Name: "LHT";
 end BASIC;
 
@@ -279,14 +298,15 @@ SPEC:
   procedure TRANSOUT(l);
     comment Процедура TRANSOUT(l) передаёт в g[l] значение t,
       преобразуя его из троичного кода в некоторый двоичный код;
-  begin x[1:6] := t; g[l,7] := 1;
+  begin x[1:6] := t; g[l,7] := 1; g[l,1:6] := 0;
     for i := 1 step 1 until 6 do
       begin
-        if x[i] != 0 then g[l,i] := 1
-          else g[l,i] := 0;
-        if x[i] = -1 then g[l,7] := 0
-      end;
-    a[l] := 1;
+        if x[i] != 0 then begin
+          g[l,i] := 1;
+          if x[i] = -1 then g[l,7] := 0
+        end;
+      end FOR;
+    a[l] := 1
   end TRANSOUT;
 
   procedure COPY(l);
@@ -317,96 +337,94 @@ SPEC:
   goto Specop[ko+14];
 
 S1: TRANSIN(-1); INCRC;
-      goto CYCLE; comment Name: "COPYG1";
+      goto CYCLE; comment Name: "CG1";
 
 S2: TRANSIN(0); INCRC;
-      goto CYCLE; comment Name: "COPYG2";
+      goto CYCLE; comment Name: "CG2";
 
 S3: TRANSIN(1); INCRC;
-      goto CYCLE; comment Name: "COPYG3";
+      goto CYCLE; comment Name: "CG3";
 
-S4: COPY(-1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "COPYF1";
+S4: COPY(-1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "CF1";
 
-S5: COPY(0); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "COPYF2";
+S5: COPY(0); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "CF2";
 
-S6: COPY(1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "COPYF3";
+S6: COPY(1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "CF3";
 
-S7: z := T; q[-1] := z[5:12]; SUIT(-1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADQ1";
+S7: z := T; q[-1] := z[5:12]; SUIT(-1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LQ1";
 
-S8: z := T; q[0] := z[5:12]; SUIT(0); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADQ2";
+S8: z := T; q[0] := z[5:12]; SUIT(0); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LQ2";
 
-S9: z := T; q[1] := z[5:12]; SUIT(1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADQ3";
+S9: z := T; q[1] := z[5:12]; SUIT(1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LQ3";
 
 S10: z := 0; z[5:6] := ph; z[9:11] := pa; T:= z; INCRC;
-      goto CYCLE; comment Name: "COPYP";
+      goto CYCLE; comment Name: "CP";
 
 S11: z[1:5] := p[1:5]; p[1:5]:= p[6:10]; p[6:10] := z[1:5];
       INCRC;
-      goto CYCLE; comment Name: "EXCHP";
+      goto CYCLE; comment Name: "EXP";
 
 S12: z := T; ph := z[5:6]; pa := z[9:11]; INCRC;
-      goto CYCLE; comment Name: "LOADP";
+      goto CYCLE; comment Name: "LP";
 
-S13: z := 0; z[1:12] := c[9:20]; c[9:20] := c[21:32];
-      c[21:32] := z[1:12]; T:= z; INCRC;
-      goto CYCLE; comment Name: "COPYMC";
+S13: z := 0; z[1:12] := TSR; T:= z; INCRC;
+      goto CYCLE; comment Name: "CMC";
 
-S14: z[1:12] := c[9:20]; c[9:20] := c[21:32];
-      c[21:32] := z[1:12]; c[1:4]:= z[3:6];
-      c[5:8]:= z[9:12];
-      goto CYCLE;  comment Name: "RETNMC";
+S14: z := TSR; psr := psr-1; c[1:4]:= z[3:6]; h[0] := ch; c[5:8]:= z[9:12];
+      goto CYCLE;  comment Name: "RMC";
 
-S15: z := T; c[21:32] := c[9:20]; c[9:20] := z[1:12];
-      pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADMC";
+S15: z := T; psr := psr+1; TSR := z[1:12];
+      INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LMC";
 
-S16: z := T; h[-1] := z[4:6]; pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADH1";
+S16: z := T; h[-1] := z[4:6]; INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LH1";
 
-S17: z := T; h[0] := z[4:6]; pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADH2";
+S17: z := T; h[0] := z[4:6]; INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LH2";
 
-S18: z := T; h[1] := z[4:6]; pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADH3";
+S18: z := T; h[1] := z[4:6]; INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LH3";
 
-S19: u[-1, 1:4] := t; a[-1] := 1; pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADU1";
+S19: u[-1, 1:4] := t; a[-1] := 1; INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LU1";
 
-S20: u[0, 1:4] := t;  a[0] := 1; pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADU2";
+S20: u[0, 1:4] := t;  a[0] := 1; INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LU2";
 
-S21: u[1, 1:4] := t; a[1] := 1; pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADU3";
+S21: u[1, 1:4] := t; a[1] := 1; INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LU3";
 
-S22: LOAD(-1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADF1";
+S22: LOAD(-1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LF1";
 
-S23: LOAD(0); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADF2";
+S23: LOAD(0); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LF2";
 
-S24: LOAD(1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADF3";
+S24: LOAD(1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LF3";
 
-S25: TRANSOUT(-1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADG1";
+S25: TRANSOUT(-1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LG1";
 
-S26: TRANSOUT(0); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADG2";
+S26: TRANSOUT(0); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LG2";
 
-S27: TRANSOUT(1); pa := pa-1; INCRC;
-      goto CYCLE; comment Name: "LOADG3";
+S27: TRANSOUT(1); INCRC; pa := pa-1;
+      goto CYCLE; comment Name: "LG3";
 
 end SPEC;
 
 IR: begin
-      c[21:32] := c[9:20]; c[9:20] := 0; c[17:20] := c[5:8];
-      c[11:14] := c[1:4]; c1 := 1; ch := 13, ca := -13;
+      z := 0; z[3:6] := c[1:4]; z[9:12] := c[5:8];
+      psr := psr+1; TSR := z;
+      c1 := 1; ch := h[0] := 13, ca := -13;
       x[1:5] := p[6:10]; p[6:10] := p[1:5]; p[1:5] := x[1:5];
       pa := pa+1; T := 0; t := m[ch,w];
       goto CYCLE
@@ -422,7 +440,7 @@ SETUN_70( m[p[1:2], 3*p[3:5]-1:3*p[3:5]+1],
           m[p[1:2], 3*p[3:5]-1],
           k[1], k[2], k[3], k[3:6], k[4:6],
           c[1], c[2:4], c[5:8],
-          p[1:2], p[3:5]);
+          p[1:2], p[3:5], sr[psr, 1:12] );
 
 end     Алгоритмического описания функционирования
         машины SETUN_70;
