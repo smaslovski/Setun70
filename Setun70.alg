@@ -155,8 +155,9 @@ MACRO:
     if c1 = 0 then begin w := -28; goto IR end;
     if pa = 13 then begin w := -30; goto IR end;
     pa := pa+1;
-    с[21:32] := с[9:20]; c[9:20] := 0; c[17:20] := c[5:8];
-    с[11:14] := с[1:4]; c1 := 0; ch := h[0] := ca := -13;
+    z := 0; z[3:6] := c[1:4]; z[9:12] := c[5:8];
+    psr := psr+1; TSR := z;
+    c1 := 0; ch := h[0] := ca := -13;
     T := 0; t := m[ch, ka];
     goto CYCLE
   end MACRO;
