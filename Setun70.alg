@@ -193,8 +193,10 @@ B4: if T != 0 then SUBR(ca+1, ca) else begin INCRC; INCRC end;
       goto CYCLE; comment Name: "DOW";
 
 B5: INCRC;
-      if T < 0 then z := ca else if T = 0 then z := ca+1 else z := ca+2;
-      SUBR(z, ca+3); pa := pa-1;
+      if T < 0 then SUBR(ca, ca+3)
+      else if T = 0 then SUBR(ca+1, ca+3)
+           else SUBR(ca+2, ca+3);
+      pa := pa-1;
       goto CYCLE; comment Name: "BRT";
 
 B6: z := T; pa := pa-1;
