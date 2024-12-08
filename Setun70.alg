@@ -116,7 +116,7 @@ begin ternary array x[1:36], z[1:18];
       адрес которой хранится в ячейке m[ch,adr], с запоминанием
       адреса возврата ret в стеке возвратов;
   begin
-    if ret > 40 then begin w := -29; goto IR end;
+    if adr > 40 | ret > 40 then begin w := -29; goto IR end;
     x := m[ch, adr];
     z := 0; z[3] := c1; z[5:6] := ch; z[9:12] := ret;
     psr := psr+1; TSR := z;
