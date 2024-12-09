@@ -177,7 +177,6 @@ subroutine DUMP
   if (register_dump) then
                  write (*,40) "h = ", character(h(-1:1,1:3)), character(hf)
                  write (*,70) "k'= ", character(c(1:8)), character(next_k), disassemble(next_k, a1, a2, a3)
-    if (verbose) write (*,50) "c'= ", character(c(9:32))
                  write (*,80) "p = ", character(p), +pa
                  write (*,90) "t = ", character(tt), +tt
                  write (*,90) "e = ", character(e), +e
@@ -199,7 +198,6 @@ subroutine DUMP
 20 format(a7,"u1:",4a,4x,"u2:",4a,4x,"u3:",4a,/,2x,49("-"))
 30 format(a7,"g1:",7a,1x,"g2:",7a,1x,"g3:",7a,/,2x,49("-"))
 40 format(a7,"h1:",3a,5x,"h2:",3a,5x,"h3:",3a,5x,"hf:",3a,/,2x,49("-"))
-50 format(a7,"cb:",3a,":",3a,":",6a,4x,"cc:",3a,":",3a,":",6a,/,2x,49("-"))
 60 format(a7," v:",9a,3x,"w:",4a,6x,sp,"(",i15,")"/,2x,49("-"))
 70 format(a7,"ca:",1a,":",3a,":",4a," => ",6a,4x,"(",a,")",/,2x,49("-"))
 80 format(a7,"pa:",2a,":",3a,2x,"pb:",2a,":",3a,7x,sp,"(",i15,")"/,2x,49("-"))

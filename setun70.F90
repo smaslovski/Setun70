@@ -30,12 +30,13 @@ module Setun70
                 m(-13:13, -40:40, 1:6),&              ! основное ЗУ как массив 6-тритных слогов
                 mw(-13:13, -13:13, 1:18),&            ! основное ЗУ как массив 3-сложных слов
                 h(-1:1, 1:3), hf(1:3),&               ! регистры выбора страниц ЗУ
-                c(1:32),&                             ! регистр режима и указателя команд
+                c(1:8),&                              ! регистр режима и указателя команд
                 p(1:10),&                             ! регистр страницы и указателя стека
                 k(1:6),&                              ! регистр кода команды
                 e(1:6), R(1:18), Y(1:18),&            ! арифметические регистры
                 g(-1:1, 1:7), u(-1:1, 1:4), a(-1:1),& ! регистры каналов УВВ
                 v(1:9), w(1:4),&                      ! регистры управления прерываниями
+                sr(-13:13, 1:12), psr(1:3),&          ! стек возвратов и указатель стека
                 start                                 ! ключ старта
 
   declare_mem_equivalence   ! Размещает массивы m и mw по одному адресу (см. "setun70_vars.h")
@@ -238,7 +239,7 @@ subroutine SETUN_70
 START&
     if (start == 0) then  ! Холодный старт машины
       start = 1
-      c1 = 1; ch = 12; ca = -40
+      c1 = 1; ch = 12; h(0,1:3) = ch; ca = -40
       ph = 0; pa = 0; Y = 0
     endif
 
@@ -282,8 +283,9 @@ MACRO&
       goto IR
     endif
     pa = pa+1
-    c(21:32) = c(9:20); c(9:20) = 0; c(17:20) = c(5:8)
-    c(11:14) = c(1:4); c1 = 0; ch = -13; ca = -13
+    z = 0; z(3:6) = c(1:4); z(9:12) = c(5:8)
+    psr = psr+1; TSR = z(1:12)
+    c1 = 0; ch = -13; h(0,1:3) = ch; ca = -13
     T = 0; tt = m(+ch, +ka, 1:6)
     goto CYCLE
 ! end MACRO
@@ -304,12 +306,13 @@ B1&
     goto CYCLE; !--  Name: "LST"
 
 B2&
-    if (abs(+S) >= (3**17)/2) then
-      ca = +tt; pa = pa-1
+    x(1:18) = T
+    if (x(1) /= 0) then
+      ca = +tt
     else
-      pa = pa-1; call INCRC
+      call INCRC
     endif
-    goto CYCLE;   !--  Name: "COT"
+    pa = pa-1; goto CYCLE;   !--  Name: "COT"
 
 B3&
     x(1:18) = T; x(19:36) = Y
@@ -330,16 +333,29 @@ EX&
     goto CYCLE;   !--  Name: "XNN"
 
 B4&
-    e = e-1; call INCRC
-    goto CYCLE; !--  Name: "E-1"
+    if (T /= 0) then
+      call SUBR(ca+1, +ca, *IR)
+    else
+      call INCRC; call INCRC
+    endif
+    goto CYCLE; !--  Name: "DOW"
 
 B5&
-    e = 0; call INCRC
-    goto CYCLE; !--  Name: "E=0"
+    call INCRC
+    if (T < 0) then
+      call SUBR(+ca, ca+3, *IR)
+    elseif (T == 0) then
+      call SUBR(ca+1, ca+3, *IR)
+    else
+      call SUBR(ca+2, ca+3, *IR)
+    endif
+    pa = pa-1
+    goto CYCLE; !--  Name: "BRT"
 
 B6&
-    e = e+1; call INCRC
-    goto CYCLE; !--  Name: "E+1"
+    z = T; pa = pa-1
+    c(1:4) = z(3:6); h(0,1:3) = ch; c(5:8) = z(9:12);
+    goto CYCLE; !--  Name: "JMP"
 
 B7&
     T = T - e*(3**12); call INCRC
@@ -378,8 +394,8 @@ B12&
     goto CYCLE;  !--  Name: "CGT"
 
 B13&
-    T = 0; tt = +ca; call INCRC
-    goto CYCLE;  !--  Name: "T=C"
+    call INCRC; call SUBR(+ca, ca+1, *IR)
+    goto CYCLE;  !--  Name: "JSR"
 
 B14&
     R = T; pa = pa-1; call INCRC
@@ -522,18 +538,15 @@ S12&
     goto CYCLE; !--  Name: "LOADP"
 
 S13&
-    z = 0; z(1:12) = c(9:20); c(9:20) = c(21:32)
-    c(21:32) = z(1:12); T = z; call INCRC
+    z = 0; z(1:12) = TSR; T = z; call INCRC
     goto CYCLE; !--  Name: "COPYMC"
 
 S14&
-    z(1:12) = c(9:20); c(9:20) = c(21:32)
-    c(21:32) = z(1:12); c(1:4)= z(3:6)
-    c(5:8)= z(9:12)
+    z(1:12) = TSR; psr = psr-1; c(1:4) = z(3:6); h(0,1:3) = ch; c(5:8) = z(9:12)
     goto CYCLE;  !--  Name: "RETNMC"
 
 S15&
-    z = T; c(21:32) = c(9:20); c(9:20) = z(1:12)
+    z = T; psr = psr+1; TSR = z(1:12)
     pa = pa-1; call INCRC
     goto CYCLE; !--  Name: "LOADMC"
 
@@ -542,7 +555,7 @@ S16&
     goto CYCLE; !--  Name: "LOADH1"
 
 S17&
-    z = T; h(0, 1:3) = z(4:6); pa = pa-1; call INCRC
+    z = T; h(0,1:3) = z(4:6); pa = pa-1; call INCRC
     goto CYCLE; !--  Name: "LOADH2"
 
 S18&
@@ -587,8 +600,9 @@ S27&
 ! end SPEC
 
 IR&
-    c(21:32) = c(9:20); c(9:20) = 0; c(17:20) = c(5:8)
-    c(11:14) = c(1:4); c1 = 1; ch = 13; ca = -13
+    z = 0; z(3:6) = c(1:4); z(9:12) = c(5:8)
+    psr = psr+1; TSR = z(1:12)
+    c1 = 1; ch = 13; h(0,1:3) = ch; ca = -13
     x(1:5) = p(6:10); p(6:10) = p(1:5); p(1:5) = x(1:5)
     pa = pa+1; T = 0; tt = m(+ch,+w,1:6)
     goto CYCLE
@@ -623,6 +637,26 @@ subroutine REFSYL(*)
   call INCRC
 
 end subroutine REFSYL
+
+subroutine SUBR(adr, ret, *)
+
+  ! Процедура SUBR осуществляет переход на подпрограмму,
+  ! адрес которой хранится в ячейке m[ch,adr], с запоминанием
+  ! адреса возврата ret в стеке возвратов;
+
+  integer, intent(in) :: adr, ret
+  type(Trit) :: x(1:6), z(1:12)
+
+  if (adr > 40 .or. ret > 40) then
+    w = -29; return 1 ! goto IR
+  endif
+
+  x = m(+ch, adr, 1:6)
+  z = 0; z(3) = c1; z(4:6) = ch; z(9:12) = ret
+  psr = psr+1; TSR = z
+  ch = +x(1:2); h(0,1:3) = ch; ca = x(3:6)
+
+end subroutine SUBR
 
 subroutine TRANSIN(l)
 
