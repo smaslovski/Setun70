@@ -118,8 +118,8 @@ begin ternary array x[1:36], z[1:18];
   begin
     if adr > 40 | ret > 40 then begin w := -29; goto IR end;
     x := m[ch, adr];
-    z := 0; z[3] := c1; z[5:6] := ch; z[9:12] := ret;
-    psr := psr+1; TSR := z;
+    z := 0; z[3] := c1; z[4:6] := ch; z[9:12] := ret;
+    psr := psr+1; TSR := z[1:12];
     ch := h[0] := x[1:2]; ca := x[3:6];
   end SUBR;
 
@@ -156,7 +156,7 @@ MACRO:
     if pa = 13 then begin w := -30; goto IR end;
     pa := pa+1;
     z := 0; z[3:6] := c[1:4]; z[9:12] := c[5:8];
-    psr := psr+1; TSR := z;
+    psr := psr+1; TSR := z[1:12];
     c1 := 0; ch := h[0] := ca := -13;
     T := 0; t := m[ch, ka];
     goto CYCLE
@@ -379,7 +379,7 @@ S12: z := T; ph := z[5:6]; pa := z[9:11]; INCRC;
 S13: z := 0; z[1:12] := TSR; T:= z; INCRC;
       goto CYCLE; comment Name: "CMC";
 
-S14: z := TSR; psr := psr-1; c[1:4]:= z[3:6]; h[0] := ch; c[5:8]:= z[9:12];
+S14: z[1:12] := TSR; psr := psr-1; c[1:4]:= z[3:6]; h[0] := ch; c[5:8]:= z[9:12];
       goto CYCLE;  comment Name: "RMC";
 
 S15: z := T; psr := psr+1; TSR := z[1:12];
@@ -426,7 +426,7 @@ end SPEC;
 
 IR: begin
       z := 0; z[3:6] := c[1:4]; z[9:12] := c[5:8];
-      psr := psr+1; TSR := z;
+      psr := psr+1; TSR := z[1:12];
       c1 := 1; ch := h[0] := 13, ca := -13;
       x[1:5] := p[6:10]; p[6:10] := p[1:5]; p[1:5] := x[1:5];
       pa := pa+1; T := 0; t := m[ch,w];
